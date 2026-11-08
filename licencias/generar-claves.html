@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Generar claves de licencia</title>
+<style>
+  body{font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;max-width:720px;margin:0 auto;padding:24px 16px 60px;color:#12201a;background:#f3f6f4}
+  h1{font-size:24px;margin:0 0 4px}
+  p{margin:8px 0}
+  .card{background:#fff;border:1px solid #e2e9e5;border-radius:16px;padding:16px;margin:16px 0}
+  .warn{background:#fdf1de;border-color:#f3d9a8}
+  button{font:inherit;font-weight:700;background:#047857;color:#fff;border:0;border-radius:12px;padding:12px 18px;cursor:pointer}
+  button.alt{background:#e3f5ec;color:#047857;padding:8px 12px;font-size:14px}
+  textarea{width:100%;height:110px;font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;border:1.5px solid #e2e9e5;border-radius:12px;padding:10px;box-sizing:border-box;word-break:break-all}
+  label{font-weight:700;display:block;margin:12px 0 4px}
+  .hidden{display:none}
+  code{background:#f0f4f2;padding:1px 5px;border-radius:6px}
+</style>
+</head>
+<body>
+<h1>Generar claves de licencia</h1>
+<p>Esta página crea el par de claves que protege tus pases. Funciona en tu computador: <b>no envía nada a internet</b>.</p>
+
+<div class="card warn">
+  <b>Haz esto una sola vez.</b> Si generas otro par más adelante, todas las licencias ya entregadas dejarán de validar.
+  Guarda la clave privada en un lugar seguro (gestor de contraseñas) y no la subas ni la compartas.
+</div>
+
+<button id="go">Generar claves</button>
+
+<div id="out" class="hidden">
+  <div class="card">
+    <label for="priv">1. Clave PRIVADA — va en Apps Script como propiedad <code>CLAVE_PRIVADA</code></label>
+    <textarea id="priv" readonly></textarea>
+    <button class="alt" data-copy="priv">Copiar</button>
+  </div>
+  <div class="card">
+    <label for="pub">2. Clave PÚBLICA — va en <code>index.html</code>, en la constante <code>LICENSE_PUBLIC_KEY</code></label>
+    <textarea id="pub" readonly></textarea>
+    <button class="alt" data-copy="pub">Copiar</button>
+  </div>
+</div>
+
+<script>
+const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+document.getElementById('go').onclick = async () => {
+  if (!document.getElementById('out').classList.contains('hidden') && !confirm('Ya generaste un par en esta página. ¿Generar otro? El anterior dejará de servir.')) return;
+  const par = await crypto.subtle.generateKey(
+    { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['sign', 'verify']);
+  document.getElementById('priv').value = b64(await crypto.subtle.exportKey('pkcs8', par.privateKey));
+  document.getElementById('pub').value = b64(await crypto.subtle.exportKey('spki', par.publicKey));
+  document.getElementById('out').classList.remove('hidden');
+};
+document.addEventListener('click', e => {
+  const id = e.target.dataset && e.target.dataset.copy; if (!id) return;
+  const t = document.getElementById(id); t.select();
+  (navigator.clipboard ? navigator.clipboard.writeText(t.value) : Promise.resolve(document.execCommand('copy')))
+    .then(() => { e.target.textContent = 'Copiado ✓'; setTimeout(() => e.target.textContent = 'Copiar', 1800); });
+});
+</script>
+</body>
+</html>
